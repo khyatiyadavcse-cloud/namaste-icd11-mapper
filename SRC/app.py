@@ -1,37 +1,52 @@
 import streamlit as st
-from sentence_transformers import SentenceTransformer
-import faiss
-import joblib
-import numpy as np
+from predict import TerminologyMapper
 
-# Load model, index, data (cached so it loads only once)
+# Page Configuration
+st.set_page_config(page_title="NAMASTE ⇄ ICD-11 Mapper", page_icon="🏥", layout="wide")
+
 @st.cache_resource
-def load_resources():
-    model = SentenceTransformer('MODELS/sentence_model')
-    index = faiss.read_index('MODELS/namaste_index.faiss')
-    df = joblib.load('MODELS/namaste_data.pkl')
-    return model, index, df
+def load_mapper():
+    # Model aur indexes ko memory me load karein
+    return TerminologyMapper()
 
-model, index, df = load_resources()
+st.title("🏥 NAMASTE to ICD-11 Mapping Engine")
+st.markdown("Bridge traditional AYUSH terminology with WHO ICD-11 standard codes using Hybrid ML matching.")
 
-st.set_page_config(page_title="NAMASTE-ICD11 Mapper", page_icon="🏥")
-st.title("🏥 NAMASTE ↔ ICD-11 Terminology Mapper")
-st.write("AYUSH traditional-medicine terms ko standardized ICD-11 codes se map karo.")
+with st.spinner("Loading Hybrid Search Engine..."):
+    try:
+        mapper = load_mapper()
+    except Exception as e:
+        st.error(f"Error loading models: {e}")
+        st.stop()
 
-query = st.text_input("Enter a symptom or NAMASTE term (English):", "")
-top_k = st.slider("Number of matches to show:", 1, 5, 3)
+# Sidebar
+st.sidebar.header("⚙️ Search Settings")
+top_k = st.sidebar.slider("Number of Results", 1, 10, 3)
+alpha = st.sidebar.slider("Keyword vs Semantic Weight", 0.0, 1.0, 0.5, help="0 = Pure Semantic, 1 = Pure Keyword")
+
+# Search UI
+query = st.text_input("🔍 Enter AYUSH Term (e.g., Jwara, Amavata, Kasa):", placeholder="Type terminology here...")
 
 if query:
-    query_embedding = model.encode([query]).astype('float32')
-    distances, indices = index.search(query_embedding, top_k)
-
-    st.subheader(f"Results for: '{query}'")
-    for rank, idx in enumerate(indices[0]):
-        row = df.iloc[idx]
-        distance = distances[0][rank]
-        confidence = max(0, 100 - distance * 30)  # simple confidence score
+    with st.spinner("Searching..."):
+        results = mapper.predict(query=query, top_k=top_k, alpha=alpha)
         
-        st.markdown(f"**{rank+1}. {row['namaste_term']}** ({row['namaste_code']}) → **{row['icd11_term']}** ({row['icd11_code']})")
-        st.progress(float(min(confidence / 100, 1.0)))
-        st.caption(f"Confidence: {confidence:.1f}% | Distance: {distance:.4f}")
-        st.divider()
+        st.subheader(f"Top Matches for: **'{query}'**")
+        st.write("---")
+        
+        for rank, res in enumerate(results):
+            with st.container():
+                col1, col2, col3 = st.columns([2, 1, 1])
+                
+                with col1:
+                    st.markdown(f"#### {rank+1}. {res['namaste_term']}")
+                    st.caption(f"**NAMASTE Code:** {res['namaste_code']} | **Category:** {res['category']}")
+                    
+                with col2:
+                    st.metric(label="ICD-11 Code", value=res['icd11_code'])
+                    
+                with col3:
+                    st.metric(label="Confidence", value=f"{res['confidence']}%")
+                
+                st.progress(res['confidence'] / 100.0)
+                st.write("")
