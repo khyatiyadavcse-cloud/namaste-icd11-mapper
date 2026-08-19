@@ -1,0 +1,11 @@
+﻿namaste_code,namaste_term,english_synonym,icd11_code,icd11_term
+AY001,Jwara,fever,1A00,Fever unspecified
+AY002,Kasa,cough,CA80,Cough
+AY003,Atisara,diarrhoea,DA92,Diarrhoea
+AY004,Shwasa,asthma breathing difficulty,CA23,Asthma
+AY005,Shiroroga,headache,8A80,Headache disorder
+AY006,Amlapitta,acid reflux heartburn,DA22,Gastro-oesophageal reflux disease
+AY007,Pandu,anaemia paleness,3A00,Anaemia
+AY008,Kamala,jaundice yellowing,DB99,Jaundice
+AY009,Arsha,piles haemorrhoids,DB30,Haemorrhoids
+AY010,Vatarakta,gout joint pain,FA20,Gout
